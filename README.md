@@ -2,6 +2,8 @@
 
 A simple, single-page QR generator. No build step, backend, or uploads.
 
+![QR generator showing a QR code for this repository, with text input, local file picker, and PNG download.](docs/screenshot.png)
+
 ## Use
 
 Open `index.html` in your browser, paste text or select a local file, then click **Generate QR**. Download the result as a PNG.
