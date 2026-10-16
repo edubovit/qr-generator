@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>QR generator</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23087c68'/%3E%3Cpath d='M7 7h7v7H7zm11 0h7v7h-7zM7 18h7v7H7zm11 0h7v7h-7z' fill='white'/%3E%3C/svg%3E">
+  <style>
+    :root { color-scheme: light; font-family: system-ui, sans-serif; color: #182a32; background: #f3f6f5; }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 48px 20px; }
+    main { max-width: 960px; margin: auto; }
+    h1 { font-size: clamp(2rem, 6vw, 3rem); letter-spacing: -.05em; margin: 8px 0; }
+    p { line-height: 1.6; }
+    .eyebrow { color: #077867; font-size: .75rem; font-weight: 750; letter-spacing: .15em; }
+    .intro, .hint, footer { color: #52666c; }
+    .layout { display: grid; grid-template-columns: 1.2fr 1fr; gap: 24px; margin-top: 32px; }
+    .panel { background: white; border: 1px solid #dce5e1; border-radius: 20px; padding: 28px; min-width: 0; }
+    label, legend { font-weight: 650; }
+    textarea, select { width: 100%; font: inherit; border: 1px solid #aebfba; border-radius: 10px; background: white; color: inherit; padding: 12px; }
+    textarea { display: block; resize: vertical; min-height: 190px; margin-top: 10px; }
+    :focus-visible { outline: 3px solid #39bca3; outline-offset: 3px; }
+    .hint { font-size: .82rem; margin: 10px 0 20px; }
+    fieldset { padding: 0; margin: 24px 0 0; border: 0; }
+    input[type=file] { display: block; width: 100%; margin: 12px 0 20px; padding: 6px; border: 1px dashed #b8cfc5; border-radius: 14px; background: #f8fbf9; color: #52666c; font: inherit; font-size: .85rem; }
+    input::file-selector-button { padding: 12px 16px 12px 40px; border: 1px solid #c8dfd4; border-radius: 9px; background: #eaf3ef url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%23075d4f' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 16V4m-4 4 4-4 4 4M4 15v5h16v-5'/%3E%3C/svg%3E") no-repeat 14px center; color: #075d4f; font: inherit; font-weight: 650; cursor: pointer; margin-right: 12px; transition: background-color .15s, border-color .15s; }
+    input::file-selector-button:hover { background-color: #d9ebe2; border-color: #82b59f; }
+    input::file-selector-button:active { background-color: #c8dfd4; }
+    select { margin-top: 8px; }
+    button, .download { display: inline-block; border: 0; border-radius: 10px; padding: 13px 18px; font: inherit; font-weight: 650; cursor: pointer; text-decoration: none; }
+    button { background: #087c68; color: white; }
+    button:hover { background: #066451; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    .actions { display: flex; gap: 10px; margin-top: 24px; }
+    .secondary, .download { background: #eaf3ef; color: #075d4f; }
+    .preview { text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 400px; }
+    .preview h2 { font-size: 1rem; margin: 0 0 20px; }
+    canvas { max-width: 100%; height: auto; image-rendering: pixelated; }
+    #placeholder { width: 100%; padding: 60px 12px; border: 2px dashed #dce5e1; border-radius: 12px; color: #52666c; }
+    #status { font-size: .875rem; overflow-wrap: anywhere; min-height: 1.6em; }
+    #status.error { color: #ac2834; }
+    footer { font-size: .78rem; margin-top: 24px; line-height: 1.7; }
+    [hidden] { display: none !important; }
+    @media (max-width: 700px) { body { padding: 28px 16px; } .layout { grid-template-columns: 1fr; } .panel { padding: 22px; } .preview { min-height: 320px; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div class="eyebrow">SMALL TOOL. NO UPLOADS.</div>
+      <h1>Make it scannable.</h1>
+      <p class="intro">Turn text or a small file into a QR code, right in your browser.</p>
+    </header>
+    <div class="layout">
+      <form id="form" class="panel">
+        <label for="text">Your text or link</label>
+        <textarea id="text" placeholder="Paste a link, a note, or anything else…" spellcheck="false" aria-describedby="text-hint"></textarea>
+        <p id="text-hint" class="hint">Text is preserved exactly, including spaces and line breaks.</p>
+        <fieldset>
+          <legend>Or choose a local file</legend>
+          <input id="file" type="file" aria-label="Choose a local file" aria-describedby="file-hint">
+          <label for="format">File encoding</label>
+          <select id="format">
+            <option value="text">UTF-8 text — encode the contents</option>
+            <option value="binary">Binary — encode as a data URL</option>
+          </select>
+          <p id="file-hint" class="hint">A selected file replaces the text input. Use binary mode for images and other non-text files. Data URLs need a compatible reader; they are not hosted download links.</p>
+        </fieldset>
+        <div class="actions">
+          <button id="generate" type="submit">Generate QR</button>
+          <button class="secondary" id="clear" type="button">Clear</button>
+        </div>
+      </form>
+      <section class="panel preview" aria-label="QR preview">
+        <h2>Your QR code</h2>
+        <div id="placeholder">Your code will appear here.</div>
+        <canvas id="qr" hidden role="img" aria-label="Generated QR code"></canvas>
+        <p id="status" role="status" aria-live="polite">Ready when you are.</p>
+        <a id="download" class="download" download="qr-code.png" hidden>Download PNG</a>
+      </section>
+    </div>
+    <footer>Contents stay in your browser. Maximum payload: 2,331 UTF-8 bytes (medium error correction); binary encoding adds overhead.<br>Internet is needed to load the QR library from jsDelivr. No account, server, or installation needed.</footer>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js" integrity="sha384-8FWZA6BGMXhsfO+BLtrJK0We6gg5o1JyO8xQm6peWDEUs17ACA5ziE/NIAkl9z2k" crossorigin="anonymous"></script>
+  <script>
+    const text = document.getElementById('text');
+    const file = document.getElementById('file');
+    const format = document.getElementById('format');
+    const canvas = document.getElementById('qr');
+    const status = document.getElementById('status');
+    const download = document.getElementById('download');
+    const placeholder = document.getElementById('placeholder');
+    const generate = document.getElementById('generate');
+    const encoder = new TextEncoder();
+    const limit = 2331;
+    let revision = 0;
+
+    function reset(message = 'Input changed. Generate a new QR code.') {
+      revision++;
+      canvas.hidden = download.hidden = true;
+      download.removeAttribute('href');
+      placeholder.hidden = false;
+      status.className = '';
+      status.textContent = message;
+      generate.disabled = false;
+    }
+
+    text.addEventListener('input', () => { file.value = ''; reset(); });
+    file.addEventListener('change', () => reset());
+    format.addEventListener('change', () => reset());
+    document.getElementById('clear').addEventListener('click', () => {
+      document.getElementById('form').reset();
+      reset('Ready when you are.');
+      text.focus();
+    });
+
+    document.getElementById('form').addEventListener('submit', async event => {
+      event.preventDefault();
+      reset('Generating…');
+      const current = revision;
+      generate.disabled = true;
+      try {
+        if (typeof qrcode !== 'function') throw new Error('QR library could not load. Check your internet connection and reload this page.');
+        let payload = text.value;
+        const selected = file.files[0];
+        const encoding = format.value;
+        if (selected) {
+          if (selected.size > limit) throw new Error('File is too large. Choose a file smaller than 2,332 bytes; binary mode needs extra room.');
+          const bytes = new Uint8Array(await selected.arrayBuffer());
+          if (current !== revision) return;
+          if (encoding === 'text') {
+            try {
+              payload = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes);
+            } catch {
+              throw new Error('This file is not valid UTF-8 text. Choose binary encoding instead.');
+            }
+            if (payload.includes('\0')) throw new Error('This looks like a binary file. Choose binary encoding instead.');
+          } else {
+            payload = 'data:' + (selected.type || 'application/octet-stream') + ';base64,' + btoa(String.fromCharCode(...bytes));
+          }
+        }
+        const size = encoder.encode(payload).length;
+        if (!size) throw new Error('Paste some text or choose a non-empty file first.');
+        if (size > limit) throw new Error(`Payload is too large (${size.toLocaleString()} bytes). Maximum: 2,331 bytes. Shorten the text or choose a smaller file.`);
+        qrcode.stringToBytes = value => Array.from(encoder.encode(value));
+        const code = qrcode(0, 'M');
+        code.addData(payload, 'Byte');
+        code.make();
+        const modules = code.getModuleCount();
+        const scale = Math.max(4, Math.floor(640 / (modules + 8)));
+        canvas.width = canvas.height = (modules + 8) * scale;
+        const context = canvas.getContext('2d');
+        context.fillStyle = '#ffffff';
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        context.fillStyle = '#000000';
+        for (let row = 0; row < modules; row++) {
+          for (let col = 0; col < modules; col++) {
+            if (code.isDark(row, col)) context.fillRect((col + 4) * scale, (row + 4) * scale, scale, scale);
+          }
+        }
+        download.href = canvas.toDataURL('image/png');
+        canvas.hidden = download.hidden = false;
+        placeholder.hidden = true;
+        status.textContent = `Ready · ${size.toLocaleString()} bytes · PNG`;
+      } catch (error) {
+        if (current !== revision) return;
+        status.className = 'error';
+        status.textContent = error instanceof Error ? error.message : 'Could not encode this content. Try a smaller payload.';
+      } finally {
+        if (current === revision) generate.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
